@@ -134,7 +134,7 @@ let piDigitsArray = [];
 async function loadPiFile(){
     if(piDigitsArray.length>0) return;
     try{
-        const resp = await fetch('onemillion.txt');
+        const resp = await fetch('https://stuff.mit.edu/afs/sipb/contrib/pi/pi-billion.txt');
         const text = await resp.text();
         piDigitsArray = text.replace(/\D/g,'').split('');
     }catch(e){
