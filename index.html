@@ -121,7 +121,7 @@ opacity:0.7;
 <div class="info" id="result"></div>
 
 <div class="footer">
-Search through stored <strong>pi-billion.txt</strong> first, then continue generating π digits dynamically.
+Search through stored <strong>onemillion.txt</strong>.txt</strong> first, then continue generating π digits dynamically.
 </div>
 
 </div>
@@ -134,7 +134,7 @@ let piDigitsArray = [];
 async function loadPiFile(){
     if(piDigitsArray.length>0) return;
     try{
-        const resp = await fetch('https://stuff.mit.edu/afs/sipb/contrib/pi/pi-billion.txt');
+        const resp = await fetch('onemillion.txt');
         const text = await resp.text();
         piDigitsArray = text.replace(/\D/g,'').split('');
     }catch(e){
