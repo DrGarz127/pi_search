@@ -32,21 +32,20 @@ justify-content:center;
 margin:25px 0;
 }
 
-input{
+input,button{
 padding:12px;
 font-size:18px;
 border-radius:8px;
 border:none;
+}
+
+input[type="text"]{
 width:260px;
 }
 
 button{
-padding:12px 18px;
-border:none;
-border-radius:8px;
 background:#6ea8ff;
 color:white;
-font-size:16px;
 cursor:pointer;
 }
 
@@ -103,10 +102,10 @@ opacity:0.7;
 
 <div class="container">
 
-<h1>ASCII in π Explorer</h1>
+<h1>ASCII in Pi Explorer</h1>
 
 <div class="searchBox">
-<input id="wordInput" placeholder="Enter word">
+<input type="text" id="wordInput" placeholder="Enter word">
 <button onclick="startSearch()">Search</button>
 </div>
 
@@ -118,147 +117,106 @@ opacity:0.7;
 <div class="progressFill" id="probBar"></div>
 </div>
 
-<div class="digitsBox" id="digits">3.</div>
-
+<div class="digitsBox" id="digits"></div>
 <div class="info" id="result"></div>
 
 <div class="footer">
-Live π generation • last 50 digits shown
+Using stored file <strong>onemillion.txt</strong> with 50 digits per line.
 </div>
 
 </div>
 
 <script>
 
+let piDigitsArray = [];
+
+// load local file on page load
+async function loadPiFile(){
+    try {
+        const response = await fetch('onemillion.txt');
+        const text = await response.text();
+        // remove non-digit characters and split into array
+        piDigitsArray = text.replace(/\D/g,'').split('');
+    } catch(e){
+        alert("Failed to load onemillion.txt: "+e);
+    }
+}
+
 function wordToASCII(word){
-let ascii=[];
-for(let i=0;i<word.length;i++){
-ascii.push(word.charCodeAt(i));
-}
-return ascii.join("");
-}
-
-function* piDigits(){
-
-let q=1n,r=0n,t=1n,k=1n,n=3n,l=3n;
-
-while(true){
-
-if(4n*q+r-t<n*t){
-
-yield Number(n);
-
-let nr=10n*(r-n*t);
-n=((10n*(3n*q+r))/t)-10n*n;
-q=10n*q;
-r=nr;
-
-}else{
-
-let nr=(2n*q+r)*l;
-let nn=(q*(7n*k)+2n+r*l)/(t*l);
-
-q=q*k;
-t=t*l;
-l=l+2n;
-k=k+1n;
-n=nn;
-r=nr;
-
-}
-
-}
-
+    let ascii=[];
+    for(let i=0;i<word.length;i++){
+        ascii.push(word.charCodeAt(i));
+    }
+    return ascii.join("");
 }
 
 async function startSearch(){
+    if(piDigitsArray.length===0){
+        await loadPiFile();
+        if(piDigitsArray.length===0) return;
+    }
 
-let word=document.getElementById("wordInput").value.trim();
-if(!word)return;
+    let word = document.getElementById("wordInput").value.trim();
+    if(!word)return;
 
-let asciiSeq=wordToASCII(word);
-let k=asciiSeq.length;
+    let asciiSeq = wordToASCII(word);
+    let k = asciiSeq.length;
 
-document.getElementById("ascii").innerText="ASCII sequence: "+asciiSeq;
+    document.getElementById("ascii").innerText = "ASCII sequence: " + asciiSeq;
+    document.getElementById("digits").innerText = "3."; // pi starts with 3.
+    document.getElementById("progress").innerText = "Searching...";
+    document.getElementById("prob").innerText = "";
+    document.getElementById("result").innerText = "";
 
-let gen=piDigits();
+    let displayBuffer = [];
+    let searchBuffer = "";
+    let pos = 0;
 
-let displayBuffer=[];
-let searchBuffer="";
+    for(let i=0;i<piDigitsArray.length;i++){
+        let digit = piDigitsArray[i];
+        pos++;
 
-let pos=0;
+        // maintain 50-digit display buffer
+        displayBuffer.push(digit);
+        if(displayBuffer.length>50) displayBuffer.shift();
 
-let digitsDiv=document.getElementById("digits");
+        // maintain minimal search buffer
+        searchBuffer += digit;
+        if(searchBuffer.length > k+2) searchBuffer = searchBuffer.slice(-k-2);
 
-document.getElementById("result").innerText="";
-document.getElementById("progress").innerText="Searching...";
-document.getElementById("prob").innerText="";
+        let index = searchBuffer.indexOf(asciiSeq);
+        if(index!==-1){
+            let foundPos = pos - searchBuffer.length + index;
 
-while(true){
+            let display = displayBuffer.join("");
+            let start = display.length - k;
+            if(start >= 0){
+                display = display.substring(0,start)
+                          + "<span class='highlight'>"
+                          + display.substring(start)
+                          + "</span>";
+            }
+            document.getElementById("digits").innerHTML = display;
+            document.getElementById("result").innerHTML = "<span class='highlight'>Match found at digit "+foundPos+"</span>";
+            return;
+        }
 
-let digit=gen.next().value;
+        // update every 100 digits
+        if(pos % 100 === 0){
+            document.getElementById("digits").innerText = displayBuffer.join("");
+            document.getElementById("progress").innerText = "Digits searched: " + pos.toLocaleString();
 
-pos++;
+            // probability
+            let prob = 1 - Math.pow(1 - Math.pow(10,-k), pos);
+            prob = Math.min(prob,1);
+            document.getElementById("prob").innerText = "Probability sequence has appeared: "+(prob*100).toFixed(6)+"%";
+            document.getElementById("probBar").style.width = (prob*100)+"%";
 
-// maintain 50-digit display window
-displayBuffer.push(digit);
-if(displayBuffer.length>50) displayBuffer.shift();
+            await new Promise(r=>setTimeout(r,0)); // yield to UI
+        }
+    }
 
-// maintain minimal search buffer
-searchBuffer+=digit;
-if(searchBuffer.length>k+2) searchBuffer=searchBuffer.slice(-k-2);
-
-let index=searchBuffer.indexOf(asciiSeq);
-
-if(index!==-1){
-
-let foundPos=pos-searchBuffer.length+index;
-
-let display=displayBuffer.join("");
-
-let start=display.length-k;
-
-if(start>=0){
-
-display =
-display.substring(0,start) +
-"<span class='highlight'>" +
-display.substring(start) +
-"</span>";
-
-}
-
-digitsDiv.innerHTML=display;
-
-document.getElementById("result").innerHTML=
-"<span class='highlight'>Match found at digit "+foundPos+"</span>";
-
-return;
-}
-
-if(pos%200===0){
-
-digitsDiv.innerText=displayBuffer.join("");
-
-document.getElementById("progress").innerText=
-"Digits searched: "+pos.toLocaleString();
-
-let prob=1-Math.pow((1-Math.pow(10,-k)),pos);
-prob=Math.min(prob,1);
-
-document.getElementById("prob").innerText=
-"Probability sequence has appeared: "+
-(prob*100).toFixed(6)+"%";
-
-document.getElementById("probBar").style.width=
-(prob*100)+"%";
-
-await new Promise(r=>setTimeout(r,0));
-
-}
-
-}
-
+    document.getElementById("result").innerText = "Sequence not found in the file.";
 }
 
 </script>
