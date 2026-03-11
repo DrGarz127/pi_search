@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>ASCII in Pi Explorer</title>
+
+<style>
+
+body{
+font-family:"Segoe UI",Arial;
+background:linear-gradient(135deg,#1c1f2b,#2e3b55);
+color:white;
+margin:0;
+display:flex;
+justify-content:center;
+}
+
+.container{
+max-width:900px;
+padding:40px;
+}
+
+h1{
+text-align:center;
+font-weight:300;
+}
+
+.searchBox{
+display:flex;
+gap:10px;
+justify-content:center;
+margin:25px 0;
+}
+
+input{
+padding:12px;
+font-size:18px;
+border-radius:8px;
+border:none;
+width:260px;
+}
+
+button{
+padding:12px 18px;
+border:none;
+border-radius:8px;
+background:#6ea8ff;
+color:white;
+font-size:16px;
+cursor:pointer;
+}
+
+button:hover{
+background:#4f8df0;
+}
+
+.info{
+text-align:center;
+margin:8px 0;
+}
+
+.digitsBox{
+background:black;
+color:#00ff9c;
+font-family:monospace;
+font-size:20px;
+padding:15px;
+border-radius:8px;
+letter-spacing:2px;
+text-align:center;
+margin-top:25px;
+}
+
+.highlight{
+color:yellow;
+font-weight:bold;
+}
+
+.progressBar{
+height:18px;
+background:#444;
+border-radius:10px;
+overflow:hidden;
+margin-top:15px;
+}
+
+.progressFill{
+height:100%;
+background:#00ff9c;
+width:0%;
+}
+
+.footer{
+margin-top:20px;
+text-align:center;
+opacity:0.7;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>ASCII in π Explorer</h1>
+
+<div class="searchBox">
+<input id="wordInput" placeholder="Enter word">
+<button onclick="startSearch()">Search</button>
+</div>
+
+<div class="info" id="ascii"></div>
+<div class="info" id="progress"></div>
+<div class="info" id="prob"></div>
+
+<div class="progressBar">
+<div class="progressFill" id="probBar"></div>
+</div>
+
+<div class="digitsBox" id="digits">3.</div>
+
+<div class="info" id="result"></div>
+
+<div class="footer">
+Live π generation • last 50 digits shown
+</div>
+
+</div>
+
+<script>
+
+function wordToASCII(word){
+let ascii=[];
+for(let i=0;i<word.length;i++){
+ascii.push(word.charCodeAt(i));
+}
+return ascii.join("");
+}
+
+function* piDigits(){
+
+let q=1n,r=0n,t=1n,k=1n,n=3n,l=3n;
+
+while(true){
+
+if(4n*q+r-t<n*t){
+
+yield Number(n);
+
+let nr=10n*(r-n*t);
+n=((10n*(3n*q+r))/t)-10n*n;
+q=10n*q;
+r=nr;
+
+}else{
+
+let nr=(2n*q+r)*l;
+let nn=(q*(7n*k)+2n+r*l)/(t*l);
+
+q=q*k;
+t=t*l;
+l=l+2n;
+k=k+1n;
+n=nn;
+r=nr;
+
+}
+
+}
+
+}
+
+async function startSearch(){
+
+let word=document.getElementById("wordInput").value.trim();
+if(!word)return;
+
+let asciiSeq=wordToASCII(word);
+let k=asciiSeq.length;
+
+document.getElementById("ascii").innerText="ASCII sequence: "+asciiSeq;
+
+let gen=piDigits();
+
+let displayBuffer=[];
+let searchBuffer="";
+
+let pos=0;
+
+let digitsDiv=document.getElementById("digits");
+
+document.getElementById("result").innerText="";
+document.getElementById("progress").innerText="Searching...";
+document.getElementById("prob").innerText="";
+
+while(true){
+
+let digit=gen.next().value;
+
+pos++;
+
+// maintain 50-digit display window
+displayBuffer.push(digit);
+if(displayBuffer.length>50) displayBuffer.shift();
+
+// maintain minimal search buffer
+searchBuffer+=digit;
+if(searchBuffer.length>k+2) searchBuffer=searchBuffer.slice(-k-2);
+
+let index=searchBuffer.indexOf(asciiSeq);
+
+if(index!==-1){
+
+let foundPos=pos-searchBuffer.length+index;
+
+let display=displayBuffer.join("");
+
+let start=display.length-k;
+
+if(start>=0){
+
+display =
+display.substring(0,start) +
+"<span class='highlight'>" +
+display.substring(start) +
+"</span>";
+
+}
+
+digitsDiv.innerHTML=display;
+
+document.getElementById("result").innerHTML=
+"<span class='highlight'>Match found at digit "+foundPos+"</span>";
+
+return;
+}
+
+if(pos%200===0){
+
+digitsDiv.innerText=displayBuffer.join("");
+
+document.getElementById("progress").innerText=
+"Digits searched: "+pos.toLocaleString();
+
+let prob=1-Math.pow((1-Math.pow(10,-k)),pos);
+prob=Math.min(prob,1);
+
+document.getElementById("prob").innerText=
+"Probability sequence has appeared: "+
+(prob*100).toFixed(6)+"%";
+
+document.getElementById("probBar").style.width=
+(prob*100)+"%";
+
+await new Promise(r=>setTimeout(r,0));
+
+}
+
+}
+
+}
+
+</script>
+
+</body>
+</html>
